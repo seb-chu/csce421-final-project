@@ -1,0 +1,130 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{CSCE 421 Final Project: Medical Text Classification using a Hybrid Rule-Based and Machine Learning Approach}
+
+\author{\IEEEauthorblockN{Lilly Mitchell}
+\IEEEauthorblockA{\textit{Computer Science and Engineering} \\
+\textit{Texas A\&M University}\\
+College Station, TX, USA \\
+lillym6@tamu.edu}
+\and
+\IEEEauthorblockN{Fikret Isik}
+\IEEEauthorblockA{\textit{Computer Science and Engineering} \\
+\textit{Texas A\&M University}\\
+College Station, TX, USA \\
+fikretisik@tamu.edu}
+\and
+\IEEEauthorblockN{Sebastian Chu}
+\IEEEauthorblockA{\textit{Computer Science and Engineering} \\
+\textit{Texas A\&M University}\\
+College Station, TX, USA \\
+sebchu22@tamu.edu}
+}
+\maketitle
+
+\begin{abstract}
+This report details the design, implementation, and evaluation of a hybrid text classification model for medical notes. The proposed system combines a deterministic rule-based pipeline with a Machine Learning (ML) classifier to accurately categorize clinical documents. By utilizing Term Frequency-Inverse Document Frequency (TF-IDF) on both word and character levels, alongside a Logistic Regression model, the system effectively handles ambiguous cases while relying on hardcoded heuristics for definitive reports. The model's performance is evaluated based on Accuracy and F1 score across internal and external test sets.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Machine Learning, Natural Language Processing, Logistic Regression, TF-IDF, Medical Text Classification.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Clinical document classification is a critical task in healthcare informatics, enabling the automated routing, billing, and analysis of patient data. The objective of this project is to develop a robust classifier capable of predicting labels for medical text sequences. Due to the highly structured nature of certain medical reports (e.g., discharge summaries, radiology reports) contrasted with the unstructured nature of free-text notes, a purely data-driven approach often struggles with edge cases or underrepresented classes in small training sets. 
+
+To address this, we propose a hybrid system. This approach first applies a set of domain-specific lexical rules to identify high-confidence positive and negative samples. For texts that fall into an uncertain confidence band, the system delegates the decision to a machine learning pipeline powered by Logistic Regression.
+
+\section{Dataset and Preprocessing}
+Before applying classification models, the text data must be normalized to ensure consistent feature extraction.
+
+\subsection{Data Sources}
+The models are trained using a primary seed dataset, supplemented by an optional set of manually labeled samples from the MIMIC database to expand the vocabulary and improve generalization on external test sets.
+
+\subsection{Text Normalization}
+All incoming text sequences are converted to lowercase. Punctuation frequencies, specifically colons and hyphens, are counted as they often indicate highly structured report formats (e.g., ``Findings:'', ``Impression:''). Numerical data and specific medical units (such as mg/dL and mEq/L) are also identified via regular expressions prior to tokenization.
+
+\section{Methodology}
+The classification framework operates in two distinct stages: a rule-based scoring mechanism and an ML-based fallback for uncertain predictions.
+
+\subsection{Rule-Based Pipeline}\label{AA}
+The rule pipeline assigns a forced label of $0$ for empty texts or documents containing strict ``hard report'' structure gates. For other documents, it calculates a confidence score based on the occurrence of positive and negative domain terms:
+\begin{itemize}
+\item \textbf{Positive Indicators:} Terms like ``discharge diagnosis'', ``history of present illness'', and ``chief complaint''.
+\item \textbf{Negative Indicators:} Keywords associated with raw lab results or imaging reports, such as ``ultrasound'', ``cta head'', and ``gram stain''.
+\item \textbf{Regex Patterns:} Identifying structured vitals or dosage patterns.
+\end{itemize}
+A confidence delta is computed. If the delta falls outside a predefined confidence band, a deterministic prediction is made.
+
+\subsection{Feature Extraction (TF-IDF)}
+For texts requiring ML intervention, features are extracted using a \texttt{FeatureUnion} of two Term Frequency-Inverse Document Frequency (TF-IDF) vectorizers:
+\begin{enumerate}
+\item A word-level analyzer capturing unigrams and bigrams.
+\item A character-level analyzer (character n-grams of lengths 3 to 5) to capture morphological roots and handle minor misspellings.
+\end{enumerate}
+
+\subsection{Logistic Regression Model}
+The vectorized features are passed into a Logistic Regression classifier. The standard logistic function used to model the probability is defined as:
+\begin{equation}
+\sigma(z) = \frac{1}{1 + e^{-z}}\label{eq}
+\end{equation}
+where $z$ represents the linear combination of the input features and their corresponding learned weights. We utilize the \texttt{liblinear} solver with balanced class weights to account for class imbalances within the training data.
+
+\section{Results and Discussion}\label{ITH}
+The performance of the hybrid model was evaluated on the Gradescope autograder across internal and external test datasets. The primary metrics for evaluation are Accuracy and F1 Score.
+
+\subsection{Model Performance}\label{FAT}
+By fine-tuning the decision margins and the confidence band threshold, we were able to minimize false positives while retaining high recall. 
+
+\begin{table}[htbp]
+\caption{Model Evaluation Metrics}
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Dataset}&\multicolumn{2}{|c|}{\textbf{Performance Metrics}} \\
+\cline{2-3} 
+\textbf{Split} & \textbf{\textit{Accuracy}}& \textbf{\textit{F1 Score}} \\
+\hline
+Internal Test 01 & 0.7975 & 0.6522 \\
+\hline
+Internal Test 02 & 0.7379 & 0.5158 \\
+\hline
+External Test 03 & 0.6964 & 0.6331 \\
+\hline
+\multicolumn{3}{l}{$^{\mathrm{a}}$Scores represent the baseline hybrid configuration.}
+\end{tabular}
+\label{tab1}
+\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.45\textwidth]{fig1.png}} % Replace fig1.png with your actual visual (e.g. confusion matrix or PR curve)
+\caption{Example visualization space for Confusion Matrix or ROC Curve.}
+\label{fig}
+\end{figure}
+
+As shown in Table~\ref{tab1}, the model relies heavily on the rule-based approach for the internal datasets, whereas the external dataset requires greater reliance on the robust TF-IDF feature space to maintain generalization.
+
+\section{Conclusion}
+This project demonstrates that combining domain-specific heuristics with statistical machine learning can yield a highly effective text classification system. The rule-based pipeline acts as an efficient filter for clear-cut cases, allowing the Logistic Regression model to focus entirely on classifying ambiguous, hard-to-parse clinical notes. Future work could explore replacing the TF-IDF and Logistic Regression components with a fine-tuned lightweight Transformer model (such as ClinicalBERT) to capture deeper semantic relationships in the text.
+
+\begin{thebibliography}{00}
+\bibitem{b1} F. Pedregosa et al., ``Scikit-learn: Machine Learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\bibitem{b2} A. E. W. Johnson et al., ``MIMIC-III, a freely accessible critical care database,'' \textit{Scientific Data}, vol. 3, no. 1, pp. 1--9, 2016.
+\bibitem{b3} C. D. Manning, P. Raghavan, and H. Schütze, \textit{Introduction to Information Retrieval}. Cambridge, UK: Cambridge University Press, 2008.
+\end{thebibliography}
+
+\end{document}
